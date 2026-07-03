@@ -4,6 +4,43 @@ This document outlines the core architecture and state machine for the PadiPay S
 
 ## Escrow State Machine
 
+```text
+                     +-------------------+
+                     |                   |
+                     |      LOCKED       | <--- Funds Deposited by Buyer
+                     |                   |
+                     +-------------------+
+                               |
+                        (Goods Delivered)
+                               |
+                               v
+                     +-------------------+
+                     |                   |
+                     |     DELIVERED     | <--- Waiting for Buyer Confirmation
+                     |                   |
+                     +-------------------+
+                               |
+             +-----------------+-----------------+
+             |                                   |
+      (Buyer Confirms)                   (Issue Raised)
+             |                                   |
+             v                                   v
+   +-------------------+               +-------------------+
+   |                   |               |                   |
+   |     RELEASED      |               |     DISPUTED      |
+   |   (Terminal)      |               |                   |
+   +-------------------+               +-------------------+
+     Seller gets XLM                             |
+                                         (Oracle Resolves)
+                                                 |
+                                 +---------------+---------------+
+                                 |                               |
+                           (Refund Buyer)                  (Pay Seller)
+                                 |                               |
+                                 v                               v
+                       [ TERMINAL: REFUNDED ]         [ TERMINAL: RELEASED ]
+```
+
 The escrow contract transitions through the following states to ensure funds are securely managed between the Buyer and Seller.
 
 1. **Locked**: 
