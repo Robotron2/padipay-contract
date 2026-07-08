@@ -41,7 +41,7 @@ impl PadiPayEscrowContract {
 
         state.buyer.require_auth();
 
-        if state.status != EscrowStatus::Created {
+        if !state.status.is_valid_transition(&EscrowStatus::Locked) {
             // Since there's no specific state error, could just return an error or we need to add one. Let's add one.
             // Wait, we can't change error.rs without being careful. Let's add InvalidState if needed, but for now we could just panic or we can just update error.rs
             return Err(EscrowError::InvalidState);
@@ -64,7 +64,7 @@ impl PadiPayEscrowContract {
 
         state.buyer.require_auth();
 
-        if state.status != EscrowStatus::Locked {
+        if !state.status.is_valid_transition(&EscrowStatus::Released) {
             return Err(EscrowError::InvalidState);
         }
 
@@ -89,7 +89,7 @@ impl PadiPayEscrowContract {
 
         state.seller.require_auth();
 
-        if state.status != EscrowStatus::Locked {
+        if !state.status.is_valid_transition(&EscrowStatus::Refunded) {
             return Err(EscrowError::InvalidState);
         }
 
