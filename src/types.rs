@@ -13,3 +13,13 @@ pub enum EscrowStatus {
     /// Funds have been returned to the buyer.
     Refunded,
 }
+
+/// Storage keys for the contract.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum DataKey {
+    /// The global administrator or mediator of the contract.
+    Admin,
+    /// The escrow state associated with this contract instance.
+    State,
+}
