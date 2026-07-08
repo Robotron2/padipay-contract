@@ -14,6 +14,18 @@ pub enum EscrowStatus {
     Refunded,
 }
 
+impl EscrowStatus {
+    /// Validates whether a state transition is legal.
+    pub fn is_valid_transition(&self, next: &EscrowStatus) -> bool {
+        match (self, next) {
+            (EscrowStatus::Created, EscrowStatus::Locked) => true,
+            (EscrowStatus::Locked, EscrowStatus::Released) => true,
+            (EscrowStatus::Locked, EscrowStatus::Refunded) => true,
+            _ => false,
+        }
+    }
+}
+
 /// Storage keys for the contract.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -22,6 +34,38 @@ pub enum DataKey {
     Admin,
     /// The escrow state associated with this contract instance.
     State,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_valid_transitions() {
+        assert!(EscrowStatus::Created.is_valid_transition(&EscrowStatus::Locked));
+        assert!(EscrowStatus::Locked.is_valid_transition(&EscrowStatus::Released));
+        assert!(EscrowStatus::Locked.is_valid_transition(&EscrowStatus::Refunded));
+    }
+
+    #[test]
+    fn test_invalid_transitions() {
+        assert!(!EscrowStatus::Created.is_valid_transition(&EscrowStatus::Released));
+        assert!(!EscrowStatus::Created.is_valid_transition(&EscrowStatus::Refunded));
+        assert!(!EscrowStatus::Created.is_valid_transition(&EscrowStatus::Created));
+
+        assert!(!EscrowStatus::Locked.is_valid_transition(&EscrowStatus::Locked));
+        assert!(!EscrowStatus::Locked.is_valid_transition(&EscrowStatus::Created));
+
+        assert!(!EscrowStatus::Released.is_valid_transition(&EscrowStatus::Created));
+        assert!(!EscrowStatus::Released.is_valid_transition(&EscrowStatus::Locked));
+        assert!(!EscrowStatus::Released.is_valid_transition(&EscrowStatus::Refunded));
+        assert!(!EscrowStatus::Released.is_valid_transition(&EscrowStatus::Released));
+
+        assert!(!EscrowStatus::Refunded.is_valid_transition(&EscrowStatus::Created));
+        assert!(!EscrowStatus::Refunded.is_valid_transition(&EscrowStatus::Locked));
+        assert!(!EscrowStatus::Refunded.is_valid_transition(&EscrowStatus::Released));
+        assert!(!EscrowStatus::Refunded.is_valid_transition(&EscrowStatus::Refunded));
+    }
 }
 
 /// Represents the state of an escrow agreement.
