@@ -82,6 +82,8 @@ fn test_create_escrow_invalid_addresses() {
 #[test]
 fn test_lock_funds() {
     let env = Env::default();
+    env.mock_all_auths();
+
     let contract_id = env.register(PadiPayEscrowContract, ());
     let client = PadiPayEscrowContractClient::new(&env, &contract_id);
 
@@ -89,9 +91,32 @@ fn test_lock_funds() {
     let seller = Address::generate(&env);
     let amount = 1000;
 
-    // TODO: Mock token contract and mint initial balance to the buyer.
-    // TODO: Call client.lock_funds(&buyer, &seller, &amount).
-    // TODO: Assert that the contract holds the tokens and buyer's balance decreased.
+    let token_admin = Address::generate(&env);
+    let token_contract = env.register_stellar_asset_contract_v2(token_admin.clone());
+    let token_client = soroban_sdk::token::StellarAssetClient::new(&env, &token_contract.address());
+    let token_client_basic = soroban_sdk::token::Client::new(&env, &token_contract.address());
+
+    // Mint tokens to buyer
+    token_client.mint(&buyer, &10000);
+    assert_eq!(token_client_basic.balance(&buyer), 10000);
+
+    // Create escrow
+    client.create_escrow(&buyer, &seller, &token_contract.address(), &amount);
+
+    // Lock funds
+    client.lock_funds();
+
+    // Check balances
+    assert_eq!(token_client_basic.balance(&buyer), 9000);
+    assert_eq!(token_client_basic.balance(&contract_id), 1000);
+
+    env.as_contract(&contract_id, || {
+        let state = soroban_escrow_contracts::storage::read_escrow_state(&env).unwrap();
+        assert_eq!(
+            state.status,
+            soroban_escrow_contracts::types::EscrowStatus::Locked
+        );
+    });
 }
 
 #[test]

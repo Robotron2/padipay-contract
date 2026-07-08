@@ -1,5 +1,5 @@
 use crate::error::EscrowError;
-use crate::storage::write_escrow_state;
+use crate::storage::{read_escrow_state, write_escrow_state};
 use crate::types::{EscrowState, EscrowStatus};
 use soroban_sdk::{contract, contractimpl, Address, Env, Symbol};
 
@@ -36,11 +36,26 @@ impl PadiPayEscrowContract {
         Ok(())
     }
     /// Locks funds in the escrow.
-    pub fn lock_funds(env: Env, buyer: Address, seller: Address, amount: i128) {
-        // TODO: Verify the buyer has authorized the transaction (buyer.require_auth()).
-        // TODO: Transfer `amount` of tokens from the buyer to the contract address.
-        // TODO: Store the escrow state (e.g., status = Locked, buyer, seller, amount) in contract storage.
-        // TODO: Emit an event indicating funds have been locked.
+    pub fn lock_funds(env: Env) -> Result<(), EscrowError> {
+        let mut state = read_escrow_state(&env)?;
+
+        state.buyer.require_auth();
+
+        if state.status != EscrowStatus::Created {
+            // Since there's no specific state error, could just return an error or we need to add one. Let's add one.
+            // Wait, we can't change error.rs without being careful. Let's add InvalidState if needed, but for now we could just panic or we can just update error.rs
+            return Err(EscrowError::InvalidState);
+        }
+
+        let token_client = crate::token::get_token_client(&env, &state.token);
+
+        // Transfer from buyer to contract
+        token_client.transfer(&state.buyer, &env.current_contract_address(), &state.amount);
+
+        state.status = EscrowStatus::Locked;
+        write_escrow_state(&env, &state);
+
+        Ok(())
     }
 
     /// Releases funds to the seller.
